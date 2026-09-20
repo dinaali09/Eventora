@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}My Planner | Eventora{% endblock %}
+{% block content %}
+<section class="dashboard-hero">
+  <div>
+    <div class="eyebrow">PERSONAL EVENT COMMAND CENTER</div>
+    <h1>Good to see you, <em>{{current_user.split(' ')[0]}}</em>.</h1>
+    <p>Everything for your celebration, organized in one calm workspace.</p>
+    <div class="quick-actions">
+      <a class="btn primary" href="#new-event">＋ New event</a>
+      <a class="btn ghost" href="{{url_for('vendors')}}">Explore vendors →</a>
+    </div>
+  </div>
+  <div class="next-event-card">
+    <span class="mini-label">NEXT ON YOUR CALENDAR</span>
+    {% if upcoming %}
+      <div class="next-date"><b>{{upcoming.event_date[8:10]}}</b><span>{{upcoming.event_date[5:7]}} / {{upcoming.event_date[0:4]}}</span></div>
+      <h3>{{upcoming.name}}</h3>
+      <p>{{upcoming.event_type}} · {{upcoming.location}} · {{upcoming.guests}} guests</p>
+      <div class="countdown-note">Budget ₹{{"{:,.0f}".format(upcoming.budget)}} · Planning mode</div>
+    {% else %}
+      <h3>Your calendar is waiting.</h3><p>Create your first event to start building your plan.</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="stats pro-stats">
+  <div class="stat-card"><span>EVENTS</span><b>{{events|length}}</b><small>Plans in your workspace</small></div>
+  <div class="stat-card"><span>TOTAL BUDGET</span><b>₹{{"{:,.0f}".format(total_budget)}}</b><small>Across all events</small></div>
+  <div class="stat-card"><span>SPENT</span><b>₹{{"{:,.0f}".format(total_spend)}}</b><small>{{progress}}% of planned budget</small></div>
+  <div class="stat-card"><span>SHORTLISTED</span><b>{{favorites|length}}</b><small>Saved vendors</small></div>
+</section>
+
+<section class="planner-grid">
+  <div class="panel budget-panel">
+    <div class="panel-top"><div><div class="eyebrow">BUDGET HEALTH</div><h2>Keep every rupee visible.</h2></div><span class="budget-percent">{{progress}}%</span></div>
+    <div class="budget-track"><span style="width:{{progress}}%"></span></div>
+    <div class="budget-numbers"><div><span>Spent</span><b>₹{{"{:,.0f}".format(total_spend)}}</b></div><div><span>Remaining</span><b>₹{{"{:,.0f}".format(remaining)}}</b></div><div><span>Budget</span><b>₹{{"{:,.0f}".format(total_budget)}}</b></div></div>
+    <div class="budget-message">{% if progress < 70 %}You are comfortably within your planned budget.{% elif progress < 90 %}Your spend is getting close to the planned budget.{% else %}Your budget is nearly fully allocated. Review upcoming expenses.{% endif %}</div>
+  </div>
+  <div class="panel chart-panel">
+    <div class="panel-top"><div><div class="eyebrow">SPENDING MIX</div><h2>Where your budget goes</h2></div></div>
+    {% if categories %}<div class="mix-list">{% for c in categories[:5] %}<div class="mix-row"><div><span>{{c.category}}</span><b>₹{{"{:,.0f}".format(c.total)}}</b></div><div class="mix-bar"><i style="width:{{ ((c.total / total_spend * 100) if total_spend else 0)|round|int }}%"></i></div></div>{% endfor %}</div>{% else %}<div class="empty mini-empty">Add expenses to see your spending mix.</div>{% endif %}
+  </div>
+</section>
+
+<section class="planner-grid lower-grid" id="new-event">
+  <div class="panel form-panel">
+    <div class="eyebrow">CREATE EVENT</div><h2>Start a new plan</h2><p class="panel-sub">Set the basics first. You can build the rest from your dashboard.</p>
+    <form method="post" action="{{url_for('create_event')}}">
+      <div class="formgrid"><label>Event name<input name="name" placeholder="My Wedding" required></label><label>Type<select name="event_type"><option>Wedding</option><option>Birthday</option><option>Engagement</option><option>Corporate</option><option>College Event</option><option>Other</option></select></label><label>Date<input type="date" name="event_date" required></label><label>Location<input name="location" placeholder="Mysuru"></label><label>Guests<input type="number" name="guests" min="1" value="100"></label><label>Budget (₹)<input type="number" name="budget" min="0" value="100000"></label></div>
+      <button class="btn primary full">Create event</button>
+    </form>
+  </div>
+  <div class="panel form-panel">
+    <div class="eyebrow">BUDGET TRACKER</div><h2>Add an expense</h2><p class="panel-sub">Record deposits and purchases as your plan grows.</p>
+    <form method="post" action="{{url_for('expense')}}">
+      <label>Event<select name="event_id" required>{% for e in events %}<option value="{{e.id}}">{{e.name}}</option>{% else %}<option value="">Create an event first</option>{% endfor %}</select></label>
+      <label>Expense title<input name="title" placeholder="Advance payment" required></label>
+      <div class="formgrid"><label>Category<select name="category"><option>Venue</option><option>Catering</option><option>Decoration</option><option>Photography</option><option>Music</option><option>Makeup</option><option>Transport</option><option>Other</option></select></label><label>Amount<input type="number" name="amount" min="0" required placeholder="5000"></label></div>
+      <button class="btn dark full">＋ Add expense</button>
+    </form>
+  </div>
+</section>
+
+<section class="section dashboard-section">
+  <div class="sectionhead"><div><div class="eyebrow">YOUR EVENTS</div><h2>Event plans</h2></div><a class="textlink" href="#new-event">＋ Add another</a></div>
+  {% for e in events %}
+  <div class="event-card-pro"><div class="event-date-pro"><b>{{e.event_date[8:10]}}</b><span>{{e.event_date[5:7]}} / {{e.event_date[0:4]}}</span></div><div class="event-main"><div class="event-title-row"><h3>{{e.name}}</h3><span class="status planning">{{e.status}}</span></div><p>{{e.event_type}} · {{e.location}} · {{e.guests}} guests</p><div class="event-meta"><span>Budget <b>₹{{"{:,.0f}".format(e.budget)}}</b></span><span>Vendors <b>{{bookings|selectattr('event_id','equalto',e.id)|list|length}}</b></span></div></div><a class="btn ghost small-btn" href="{{url_for('vendors')}}">Manage vendors</a></div>
+  {% else %}<div class="empty">No events yet. Use the form above to create your first plan.</div>{% endfor %}
+</section>
+
+<section class="section dashboard-section compact-section">
+  <div class="sectionhead"><div><div class="eyebrow">RECENT EXPENSES</div><h2>Money trail</h2></div></div>
+  {% if expense_rows %}<div class="expense-table"><div class="expense-head"><span>Expense</span><span>Event</span><span>Category</span><span>Amount</span><span></span></div>{% for x in expense_rows[:8] %}<div class="expense-row"><span><b>{{x.title}}</b></span><span>{{x.event_name}}</span><span><i class="dot"></i>{{x.category}}</span><span><b>₹{{"{:,.0f}".format(x.amount)}}</b></span><form method="post" action="{{url_for('delete_expense',expense_id=x.id)}}"><button class="icon-btn" title="Remove expense">×</button></form></div>{% endfor %}</div>{% else %}<div class="empty">No expenses recorded yet.</div>{% endif %}
+</section>
+
+<section class="planner-grid dashboard-section">
+  <div class="panel">
+    <div class="sectionhead inside"><div><div class="eyebrow">BOOKING PIPELINE</div><h2>Vendor requests</h2></div><a class="textlink" href="{{url_for('vendors')}}">Find more →</a></div>
+    <div class="booking-list">{% for b in bookings[:5] %}<div class="booking-pro"><img src="{{b.image}}"><div><b>{{b.vendor_name}}</b><p>{{b.category}} · ★ {{b.rating}}</p></div><span class="status {{b.status|lower}}">{{b.status}}</span></div>{% else %}<div class="empty mini-empty">No vendor requests yet.</div>{% endfor %}</div>
+  </div>
+  <div class="panel">
+    <div class="sectionhead inside"><div><div class="eyebrow">SHORTLIST</div><h2>Saved vendors</h2></div><a class="textlink" href="{{url_for('vendors')}}">Explore →</a></div>
+    <div class="saved-list">{% for v in favorites[:5] %}<a href="{{url_for('vendor',vendor_id=v.id)}}" class="saved-pro"><img src="{{v.image}}"><div><b>{{v.name}}</b><p>{{v.category}} · {{v.location}}</p></div><span>★ {{v.rating}}</span></a>{% else %}<div class="empty mini-empty">Save vendors you want to compare later.</div>{% endfor %}</div>
+  </div>
+</section>
+
+<section class="planning-strip"><div><div class="eyebrow">EVENTORA CHECKLIST</div><h2>Discover → Shortlist → Book → Celebrate</h2><p>Keep your vendor decisions, payments and event details in one place.</p></div><div class="check-steps"><span class="done">✓ Discover</span><span class="done">✓ Shortlist</span><span>03 Book</span><span>04 Celebrate</span></div></section>
+{% endblock %}
