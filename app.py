@@ -267,6 +267,7 @@ def api_vendors():
     con=db(); rows=con.execute("SELECT id,name,category,location,price,rating,image FROM vendors").fetchall(); con.close()
     return jsonify([dict(x) for x in rows])
 
+init_db()
+
 if __name__=="__main__":
-    init_db()
     app.run(debug=False,host="127.0.0.1",port=5000)
